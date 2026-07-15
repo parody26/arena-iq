@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
@@ -10,9 +12,61 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS and JSON parsing
-app.use(cors());
-app.use(express.json());
+// --- SECURITY MIDDLEWARE ---
+
+// Sets safe HTTP headers (CSP, no-sniff, frameguard, HSTS, etc.)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://kit.fontawesome.com", "'unsafe-inline'"],
+      styleSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com", "'unsafe-inline'"],
+      fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "data:"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"]
+    }
+  }
+}));
+
+// Restrict cross-origin access to an explicit allowlist instead of "*".
+// Set ALLOWED_ORIGINS as a comma-separated list in your environment (e.g. your deployed URL).
+// If unset, same-origin requests (the app serving its own frontend) still work.
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  }
+}));
+
+// Cap request body size to prevent oversized-payload abuse
+app.use(express.json({ limit: '20kb' }));
+
+// General rate limit across all API routes (protects the simulation + AI cost surface)
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please slow down.' }
+});
+app.use('/api/', apiLimiter);
+
+// Tighter limit specifically on the AI chat endpoint (costlier, most abuse-prone)
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many chat requests. Please wait a moment before trying again.' }
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
@@ -308,16 +362,23 @@ async function generateGenAIRecommendation(incident) {
 }
 
 // SSE BROADCASTER
-function broadcastData() {
-  const data = JSON.stringify({
+// Shared payload builder — avoids building/stringifying the same object twice
+// (once on initial connect, once per tick) and keeps the wire format in one place.
+function buildStatePayload() {
+  return {
     matchState: simulationState.matchState,
     simulationSpeed: simulationState.simulationSpeed,
     timestamp: simulationState.timestamp,
     telemetry: simulationState.telemetry,
     incidents: simulationState.incidents,
     volunteers: simulationState.volunteers
-  });
+  };
+}
 
+function broadcastData() {
+  // Skip the (relatively expensive) stringify entirely when nobody is listening
+  if (simulationState.sseClients.length === 0) return;
+  const data = JSON.stringify(buildStatePayload());
   simulationState.sseClients.forEach(client => {
     client.write(`data: ${data}\n\n`);
   });
@@ -332,15 +393,7 @@ app.get('/api/live-data', (req, res) => {
   });
 
   // Send initial data
-  const data = JSON.stringify({
-    matchState: simulationState.matchState,
-    simulationSpeed: simulationState.simulationSpeed,
-    timestamp: simulationState.timestamp,
-    telemetry: simulationState.telemetry,
-    incidents: simulationState.incidents,
-    volunteers: simulationState.volunteers
-  });
-  res.write(`data: ${data}\n\n`);
+  res.write(`data: ${JSON.stringify(buildStatePayload())}\n\n`);
 
   simulationState.sseClients.push(res);
 
@@ -350,8 +403,21 @@ app.get('/api/live-data', (req, res) => {
 });
 
 // SIMULATION CONTROL API
+const VALID_MATCH_STATES = ["Pre-match", "Kick-off", "Half-time", "Second-half", "Post-match"];
+
 app.post('/api/simulation/state', (req, res) => {
   const { matchState, simulationSpeed } = req.body;
+
+  if (matchState !== undefined && !VALID_MATCH_STATES.includes(matchState)) {
+    return res.status(400).json({ error: `matchState must be one of: ${VALID_MATCH_STATES.join(', ')}` });
+  }
+
+  if (simulationSpeed !== undefined) {
+    const speedNum = Number(simulationSpeed);
+    if (!Number.isFinite(speedNum) || speedNum < 0.5 || speedNum > 20) {
+      return res.status(400).json({ error: "simulationSpeed must be a number between 0.5 and 20" });
+    }
+  }
 
   if (matchState) {
     simulationState.matchState = matchState;
@@ -379,6 +445,11 @@ app.post('/api/simulation/state', (req, res) => {
 // INCIDENT RESOLUTION API
 app.post('/api/incidents/resolve', (req, res) => {
   const { incidentId } = req.body;
+
+  if (typeof incidentId !== 'string' || !incidentId.trim() || incidentId.length > 50) {
+    return res.status(400).json({ error: "A valid incidentId string is required" });
+  }
+
   const incident = simulationState.incidents.find(i => i.id === incidentId);
 
   if (!incident) {
@@ -445,13 +516,19 @@ app.post('/api/incidents/resolve', (req, res) => {
 });
 
 // GENAI CHATBOT API (CONCIERGE)
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', chatLimiter, async (req, res) => {
   const { message, userRole } = req.body;
   const isOperator = userRole === 'operator';
 
-  if (!message) {
+  if (typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ error: "Message content required" });
   }
+  if (message.length > 500) {
+    return res.status(400).json({ error: "Message is too long (max 500 characters)" });
+  }
+  // Strip any embedded HTML/script-like content before it ever reaches the
+  // AI prompt or is echoed back — belt-and-suspenders alongside client-side escaping.
+  const message_clean = message.replace(/<[^>]*>/g, '').trim();
 
   // Check if Gemini is enabled and run
   if (genAI) {
@@ -498,7 +575,7 @@ app.post('/api/chat', async (req, res) => {
       }
 
       const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: message }] }],
+        contents: [{ role: 'user', parts: [{ text: message_clean }] }],
         systemInstruction: systemPrompt
       });
 
@@ -512,7 +589,7 @@ app.post('/api/chat', async (req, res) => {
   }
 
   // HIGH-FIDELITY LOCAL NLP ENGINE (FALLBACK)
-  const response = handleLocalNLP(message, isOperator);
+  const response = handleLocalNLP(message_clean, isOperator);
   res.json({ response, source: "local-simulation-ai" });
 });
 
@@ -585,11 +662,15 @@ function handleLocalNLP(message, isOperator) {
   }
 }
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`==================================================`);
-  console.log(` ArenaIQ Stadium Operations Hub Server Running!`);
-  console.log(` Port:    http://localhost:${PORT}`);
-  console.log(` Mode:    FIFA World Cup 2026 Live Telemetry`);
-  console.log(`==================================================`);
-});
+// Start server (skip when this file is required by tests)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`==================================================`);
+    console.log(` ArenaIQ Stadium Operations Hub Server Running!`);
+    console.log(` Port:    http://localhost:${PORT}`);
+    console.log(` Mode:    FIFA World Cup 2026 Live Telemetry`);
+    console.log(`==================================================`);
+  });
+}
+
+module.exports = { app, simulationState };

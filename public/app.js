@@ -5,6 +5,18 @@
    Written Directions lists, Event Streams, and Sustainability Charts
    ========================================================================== */
 
+// Escapes text before it is ever placed inside innerHTML, preventing stored/reflected
+// XSS from user-typed chat messages, AI-generated text, or simulated incident data.
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
   // ==========================================
@@ -669,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
       html += `
         <div class="stream-item ${evt.type}">
           <span class="stream-time">${eventTime}</span>
-          <span class="stream-content">${icon} ${evt.text}</span>
+          <span class="stream-content">${icon} ${escapeHTML(evt.text)}</span>
         </div>
       `;
     });
@@ -692,23 +704,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const showAction = inc.status === "Pending";
       
       html += `
-        <div class="incident-item severity-${inc.severity}">
+        <div class="incident-item severity-${escapeHTML(inc.severity)}">
           <div class="incident-meta">
-            <span class="incident-loc"><i class="fa-solid fa-location-dot text-accent-red"></i> ${inc.location}</span>
-            <span class="incident-time">${inc.timestamp}</span>
+            <span class="incident-loc"><i class="fa-solid fa-location-dot text-accent-red" aria-hidden="true"></i> ${escapeHTML(inc.location)}</span>
+            <span class="incident-time">${escapeHTML(inc.timestamp)}</span>
           </div>
-          <div class="incident-desc">${inc.description}</div>
+          <div class="incident-desc">${escapeHTML(inc.description)}</div>
           
           <div class="incident-ai-rec-box">
-            <p><strong><i class="fa-solid fa-robot"></i> ARENAIQ DECISION SUPPORT PLAN</strong>
-            ${inc.genaiRecommendation}</p>
+            <p><strong><i class="fa-solid fa-robot" aria-hidden="true"></i> ARENAIQ DECISION SUPPORT PLAN</strong>
+            ${escapeHTML(inc.genaiRecommendation)}</p>
           </div>
 
           <div class="incident-actions">
-            <span class="incident-badge ${statusClass}">${inc.status}</span>
+            <span class="incident-badge ${statusClass}">${escapeHTML(inc.status)}</span>
             ${showAction 
-              ? `<button class="resolve-btn" onclick="authorizeIncidentResponse('${inc.id}')"><i class="fa-solid fa-bolt"></i> Authorize AI Response</button>`
-              : `<span class="assigned-staff-info"><i class="fa-solid fa-user-check text-accent-green"></i> Assigned: ${inc.volunteerAssigned}</span>`
+              ? `<button class="resolve-btn" onclick="authorizeIncidentResponse('${escapeHTML(inc.id)}')" aria-label="Authorize AI response for incident at ${escapeHTML(inc.location)}"><i class="fa-solid fa-bolt" aria-hidden="true"></i> Authorize AI Response</button>`
+              : `<span class="assigned-staff-info"><i class="fa-solid fa-user-check text-accent-green" aria-hidden="true"></i> Assigned: ${escapeHTML(inc.volunteerAssigned)}</span>`
             }
           </div>
         </div>
@@ -976,10 +988,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     msgDiv.innerHTML = `
       <div class="message-meta">
-        <span class="bot-name">${sender === 'user' ? 'You' : botName}</span>
-        <span class="message-time">${timestamp}</span>
+        <span class="bot-name">${escapeHTML(sender === 'user' ? 'You' : botName)}</span>
+        <span class="message-time">${escapeHTML(timestamp)}</span>
       </div>
-      <div class="message-text">${text}</div>
+      <div class="message-text">${escapeHTML(text)}</div>
     `;
 
     historyContainer.appendChild(msgDiv);

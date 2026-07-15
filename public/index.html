@@ -55,33 +55,33 @@
       </div>
 
       <!-- Navigation Tabs -->
-      <nav class="sidebar-nav">
-        <button class="nav-tab-btn active" data-tab="dashboard">
-          <i class="fa-solid fa-gauge"></i> <span>Main Dashboard</span>
+      <nav class="sidebar-nav" aria-label="Main sections">
+        <button class="nav-tab-btn active" data-tab="dashboard" role="tab" aria-selected="true">
+          <i class="fa-solid fa-gauge" aria-hidden="true"></i> <span>Main Dashboard</span>
         </button>
-        <button class="nav-tab-btn" data-tab="wayfinder">
-          <i class="fa-solid fa-map-location-dot"></i> <span>Stadium Wayfinder</span>
+        <button class="nav-tab-btn" data-tab="wayfinder" role="tab" aria-selected="false">
+          <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i> <span>Stadium Wayfinder</span>
         </button>
-        <button class="nav-tab-btn" data-tab="sustainability">
-          <i class="fa-solid fa-leaf"></i> <span>Eco & Sustainability</span>
+        <button class="nav-tab-btn" data-tab="sustainability" role="tab" aria-selected="false">
+          <i class="fa-solid fa-leaf" aria-hidden="true"></i> <span>Eco & Sustainability</span>
         </button>
-        <button class="nav-tab-btn" data-tab="fan-chat">
-          <i class="fa-solid fa-comments"></i> <span>AI Fan Assistant</span>
+        <button class="nav-tab-btn" data-tab="fan-chat" role="tab" aria-selected="false">
+          <i class="fa-solid fa-comments" aria-hidden="true"></i> <span>AI Fan Assistant</span>
         </button>
         
         <div class="sidebar-divider"></div>
         
-        <button class="nav-tab-btn staff-tab-btn" data-tab="staff-portal">
-          <i class="fa-solid fa-user-shield"></i> <span>Staff Command</span>
+        <button class="nav-tab-btn staff-tab-btn" data-tab="staff-portal" role="tab" aria-selected="false">
+          <i class="fa-solid fa-user-shield" aria-hidden="true"></i> <span>Staff Command</span>
         </button>
       </nav>
 
       <!-- Simulation Configuration Widgets -->
       <div class="sidebar-settings">
-        <h4>Simulation Settings</h4>
+        <h4 id="sim-settings-heading">Simulation Settings</h4>
         
         <div class="setting-item">
-          <label><i class="fa-solid fa-stadium text-accent"></i> Venue</label>
+          <label for="stadium-select"><i class="fa-solid fa-stadium text-accent" aria-hidden="true"></i> Venue</label>
           <select id="stadium-select" class="sidebar-select">
             <option value="metlife">MetLife Stadium</option>
             <option value="sofi">SoFi Stadium</option>
@@ -90,7 +90,7 @@
         </div>
 
         <div class="setting-item">
-          <label><i class="fa-solid fa-gamepad text-accent-yellow"></i> Match State</label>
+          <label for="sim-state-select"><i class="fa-solid fa-gamepad text-accent-yellow" aria-hidden="true"></i> Match State</label>
           <select id="sim-state-select" class="sidebar-select">
             <option value="Pre-match">Pre-match</option>
             <option value="Kick-off">Kick-off</option>
@@ -101,11 +101,11 @@
         </div>
 
         <div class="setting-item">
-          <label><i class="fa-solid fa-gauge-high"></i> Speed</label>
-          <div class="speed-toggle-group">
-            <button class="speed-btn active" data-speed="1">1x</button>
-            <button class="speed-btn" data-speed="5">5x</button>
-            <button class="speed-btn" data-speed="10">10x</button>
+          <span id="speed-label"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Speed</span>
+          <div class="speed-toggle-group" role="group" aria-labelledby="speed-label">
+            <button class="speed-btn active" data-speed="1" aria-pressed="true">1x</button>
+            <button class="speed-btn" data-speed="5" aria-pressed="false">5x</button>
+            <button class="speed-btn" data-speed="10" aria-pressed="false">10x</button>
           </div>
         </div>
       </div>
@@ -226,7 +226,7 @@
           <!-- LIVE MATCH & ARENA EVENT STREAM -->
           <div class="glass-panel live-stream-widget">
             <h3><i class="fa-solid fa-tower-broadcast text-accent-red animate-pulse"></i> Live Arena & Match Stream</h3>
-            <div class="live-event-stream" id="db-event-stream">
+            <div class="live-event-stream" id="db-event-stream" role="log" aria-live="polite" aria-label="Live stadium event stream">
               <!-- Event timelines are dynamically fed here -->
               <p class="no-stream-text">Listening for live stadium telemetry events...</p>
             </div>
@@ -563,7 +563,7 @@
             <div class="ai-badge" id="chat-ai-badge">Offline Mode</div>
           </div>
 
-          <div class="chat-history-container" id="fan-chat-history">
+          <div class="chat-history-container" id="fan-chat-history" role="log" aria-live="polite" aria-label="Fan assistant conversation">
             <div class="chat-message bot">
               <div class="message-meta">
                 <span class="bot-name">ArenaIQ Assistant</span>
@@ -583,8 +583,9 @@
           </div>
 
           <form id="fan-chat-form" class="chat-input-form">
-            <input type="text" id="fan-chat-input" placeholder="Ask me something! (e.g. 'Is there a quiet room?', '¿Dónde está la puerta A?')..." required autocomplete="off">
-            <button type="submit" class="chat-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            <label for="fan-chat-input" class="sr-only">Ask the Fan Assistant a question</label>
+            <input type="text" id="fan-chat-input" placeholder="Ask me something! (e.g. 'Is there a quiet room?', '¿Dónde está la puerta A?')..." required autocomplete="off" maxlength="500">
+            <button type="submit" class="chat-send-btn" aria-label="Send message"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i></button>
           </form>
         </div>
       </section>
@@ -603,11 +604,12 @@
           </div>
           <form id="staff-login-form" class="lock-form">
             <div class="form-group password-group">
+              <label for="staff-password" class="sr-only">Staff password</label>
               <input type="password" id="staff-password" placeholder="Enter Staff Password..." required>
-              <button type="submit" class="login-submit-btn">Unlock <i class="fa-solid fa-arrow-right"></i></button>
+              <button type="submit" class="login-submit-btn">Unlock <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
             </div>
             <p class="lock-hint">Hint: The tournament default password is <code>fifa2026</code></p>
-            <p id="login-error-msg" class="login-error hidden"><i class="fa-solid fa-triangle-exclamation"></i> Incorrect password. Access denied.</p>
+            <p id="login-error-msg" class="login-error hidden" role="alert"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Incorrect password. Access denied.</p>
           </form>
         </div>
 
@@ -644,7 +646,7 @@
             <div class="staff-card glass-panel flex-column">
               <h4><i class="fa-solid fa-circle-exclamation text-accent-red"></i> Active Incidents</h4>
               
-              <div class="incidents-feed-container" id="incidents-feed">
+              <div class="incidents-feed-container" id="incidents-feed" role="log" aria-live="polite" aria-label="Active stadium incidents">
                 <p class="no-incidents-text">Monitoring live sensor telemetry feeds for stadium incidents...</p>
               </div>
 
@@ -663,7 +665,7 @@
                 <div class="ai-badge" id="operator-ai-badge">Offline Mode</div>
               </div>
 
-              <div class="chat-history-container" id="operator-chat-history">
+              <div class="chat-history-container" id="operator-chat-history" role="log" aria-live="polite" aria-label="Operations advisor conversation">
                 <div class="chat-message bot">
                   <div class="message-meta">
                     <span class="bot-name">ArenaIQ Advisor</span>
@@ -682,8 +684,9 @@
               </div>
 
               <form id="operator-chat-form" class="chat-input-form">
-                <input type="text" id="operator-chat-input" placeholder="Query ArenaIQ Operations Advisory..." required autocomplete="off">
-                <button type="submit" class="chat-send-btn op-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                <label for="operator-chat-input" class="sr-only">Query the Operations Advisor</label>
+                <input type="text" id="operator-chat-input" placeholder="Query ArenaIQ Operations Advisory..." required autocomplete="off" maxlength="500">
+                <button type="submit" class="chat-send-btn op-btn" aria-label="Send message"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i></button>
               </form>
             </div>
 
