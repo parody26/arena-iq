@@ -1,0 +1,17 @@
+[33mcommit 9a378eaff554beba4955c6411c75a81044e86330[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Rihaan Kataria <katariarihaan7@gmail.com>
+Date:   Thu Jul 16 00:26:39 2026 +0530
+
+    Add security hardening, input validation, tests, and accessibility fixes
+
+[33mcommit 7c4dd2e821a35601f6c8babc21004f3d38ef4a2a[m
+Author: Rihaan Kataria <katariarihaan7@gmail.com>
+Date:   Wed Jul 15 17:17:45 2026 +0530
+
+    Remove node_modules and .env from repo
+
+[33mcommit e302773c9d05becbaf6113900f658362957e836d[m
+Author: Rihaan Kataria <katariarihaan7@gmail.com>
+Date:   Wed Jul 15 16:53:28 2026 +0530
+
+    ArenaIQ - initial submission
