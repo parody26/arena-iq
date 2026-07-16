@@ -1,0 +1,120 @@
+{
+  "matchState": "Pre-match",
+  "simulationSpeed": 1,
+  "stadiumId": "metlife",
+  "timestamp": "7:50:57 pm",
+  "telemetry": {
+    "crowdDensity": 85,
+    "gateThroughput": {
+      "Gate A": 212,
+      "Gate B": 171,
+      "Gate C": 151,
+      "Gate D": 77
+    },
+    "queueWaitTimes": {
+      "Gate A": 17,
+      "Gate B": 17,
+      "Gate C": 10,
+      "Gate D": 3,
+      "Concessions": 8,
+      "Restrooms": 3
+    },
+    "energyUsage": {
+      "solarGeneration": 107,
+      "gridPower": 191,
+      "batteryStorage": 36,
+      "unit": "kW"
+    },
+    "waterFlow": {
+      "rate": 24,
+      "unit": "gal/min"
+    },
+    "wasteBinCapacity": {
+      "zone1": 30,
+      "zone2": 25,
+      "zone3": 40,
+      "zone4": 98
+    }
+  },
+  "incidents": [
+    {
+      "id": "inc-0777",
+      "timestamp": "07:49 pm",
+      "severity": "High",
+      "location": "Gate C Food Trucks Plaza",
+      "description": "Crowd bottleneck forming near entry turnstiles. (Gate C Food Trucks Plaza)",
+      "status": "Pending",
+      "volunteerAssigned": "None",
+      "genaiRecommendation": "Open auxiliary ticket lane 12. Direct volunteer staff to guide fans to Gate C. Send push alert in app for fans in zone."
+    },
+    {
+      "id": "inc-5663",
+      "timestamp": "07:48 pm",
+      "severity": "Low",
+      "location": "Section 218 Accessibility Ramp",
+      "description": "Waste overflow detected at Smart Bin. (Section 218 Accessibility Ramp)",
+      "status": "Pending",
+      "volunteerAssigned": "None",
+      "genaiRecommendation": "Dispatch Sustainability Volunteer Unit to replace bags and route items to Sorting Hub B."
+    },
+    {
+      "id": "inc-3630",
+      "timestamp": "07:48 pm",
+      "severity": "High",
+      "location": "Gate C Food Trucks Plaza",
+      "description": "Crowd bottleneck forming near entry turnstiles. (Gate C Food Trucks Plaza)",
+      "status": "Pending",
+      "volunteerAssigned": "None",
+      "genaiRecommendation": "Open auxiliary ticket lane 12. Direct volunteer staff to guide fans to Gate C. Send push alert in app for fans in zone."
+    },
+    {
+      "id": "inc-1",
+      "timestamp": "08:15 AM",
+      "severity": "Medium",
+      "location": "Gate B Security Queues",
+      "description": "Elevated queue times (28 minutes) due to ticket scanner sync issue.",
+      "status": "Resolving",
+      "volunteerAssigned": "Volunteer Unit 08",
+      "genaiRecommendation": "Deploy Volunteer Unit 08 with manual QR scanner units to Gate B. Broadcast push notification to fans in zone 2 advising them to use Gate C where wait times are under 5 mins."
+    }
+  ],
+  "volunteers": [
+    {
+      "id": "vol-01",
+      "name": "Volunteer Unit 01 (Info)",
+      "location": "Gate A",
+      "status": "Available"
+    },
+    {
+      "id": "vol-02",
+      "name": "Volunteer Unit 02 (Medical)",
+      "location": "Gate B",
+      "status": "Available"
+    },
+    {
+      "id": "vol-03",
+      "name": "Volunteer Unit 03 (Logistics)",
+      "location": "Concourse Sec 104",
+      "status": "Available"
+    },
+    {
+      "id": "vol-04",
+      "name": "Volunteer Unit 04 (Accessibility)",
+      "location": "Gate B",
+      "status": "Available"
+    },
+    {
+      "id": "vol-05",
+      "name": "Volunteer Unit 05 (Sustainability)",
+      "location": "Gate A",
+      "status": "Available"
+    },
+    {
+      "id": "vol-08",
+      "name": "Volunteer Unit 08 (Info)",
+      "location": "Gate B Entrance",
+      "status": "Dispatched"
+    }
+  ],
+  "savedAt": "2026-07-16T15:20:16.425Z"
+}
