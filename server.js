@@ -431,8 +431,18 @@ function broadcastData() {
   // Skip the (relatively expensive) stringify entirely when nobody is listening
   if (simulationState.sseClients.length === 0) return;
   const data = JSON.stringify(buildStatePayload());
-  simulationState.sseClients.forEach(client => {
-    client.write(`data: ${data}\n\n`);
+  // Iterate a copy so we can safely prune failed clients out of the live
+  // array mid-loop without skipping an element.
+  [...simulationState.sseClients].forEach(client => {
+    try {
+      client.write(`data: ${data}\n\n`);
+    } catch (err) {
+      // A client can go bad between ticks (dropped connection, broken pipe)
+      // before its 'close' event fires. Without this, an unhandled write
+      // error here would crash the whole process for every connected user.
+      console.warn(`Dropping a broken SSE client: ${err.message}`);
+      simulationState.sseClients = simulationState.sseClients.filter(c => c !== client);
+    }
   });
 }
 
@@ -448,6 +458,14 @@ app.get('/api/live-data', (req, res) => {
   res.write(`data: ${JSON.stringify(buildStatePayload())}\n\n`);
 
   simulationState.sseClients.push(res);
+
+  // Broken connections can also surface as an async 'error' event on the
+  // stream rather than a synchronous throw from .write() — listen for that
+  // too so it can't bring down the whole process for every connected client.
+  res.on('error', (err) => {
+    console.warn(`SSE client connection error: ${err.message}`);
+    simulationState.sseClients = simulationState.sseClients.filter(c => c !== res);
+  });
 
   req.on('close', () => {
     simulationState.sseClients = simulationState.sseClients.filter(c => c !== res);
