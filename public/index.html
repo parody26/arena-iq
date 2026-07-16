@@ -154,7 +154,7 @@
               <span class="tel-trend text-accent-green" id="db-density-sub">Let's welcome the crowds!</span>
             </div>
             <div class="progress-bar-container">
-              <div class="progress-bar-fill" id="db-density-bar" style="width: 35%;"></div>
+              <div class="progress-bar-fill" id="db-density-bar"></div>
             </div>
           </div>
 
@@ -169,7 +169,7 @@
               <span class="tel-trend text-accent-green">Green concession lanes open</span>
             </div>
             <div class="progress-bar-container">
-              <div class="progress-bar-fill green" id="db-concession-bar" style="width: 40%;"></div>
+              <div class="progress-bar-fill green" id="db-concession-bar"></div>
             </div>
           </div>
 
@@ -242,7 +242,7 @@
                   <span id="db-solar-ratio">27%</span>
                 </div>
                 <div class="progress-bar-container">
-                  <div class="progress-bar-fill green" id="db-solar-bar" style="width: 27%;"></div>
+                  <div class="progress-bar-fill green" id="db-solar-bar"></div>
                 </div>
               </div>
               <div class="util-bar-group">
@@ -251,7 +251,7 @@
                   <span id="db-waste-avg">27%</span>
                 </div>
                 <div class="progress-bar-container">
-                  <div class="progress-bar-fill" id="db-waste-bar" style="width: 27%;"></div>
+                  <div class="progress-bar-fill" id="db-waste-bar"></div>
                 </div>
               </div>
               <div class="util-bar-group">
@@ -286,7 +286,7 @@
             </div>
 
             <div class="form-group">
-              <label>Select Start Location:</label>
+              <label for="nav-start">Select Start Location:</label>
               <select id="nav-start" class="sidebar-select">
                 <option value="gate-a">Gate A (North-East - Main Fan Zone)</option>
                 <option value="gate-b">Gate B (North-West - Sensory Desk)</option>
@@ -296,7 +296,7 @@
             </div>
 
             <div class="form-group">
-              <label>Select Destination:</label>
+              <label for="nav-end">Select Destination:</label>
               <select id="nav-end" class="sidebar-select">
                 <option value="select">-- Choose Destination --</option>
                 <option value="seat-104">My Seating Section (Sec 104)</option>
@@ -608,7 +608,6 @@
               <input type="password" id="staff-password" placeholder="Enter Staff Password..." required>
               <button type="submit" class="login-submit-btn">Unlock <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
             </div>
-            <p class="lock-hint">Hint: The tournament default password is <code>fifa2026</code></p>
             <p id="login-error-msg" class="login-error hidden" role="alert"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Incorrect password. Access denied.</p>
           </form>
         </div>

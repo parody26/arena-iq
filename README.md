@@ -72,9 +72,9 @@ Then open `http://localhost:3000`. Add a `GEMINI_API_KEY` to a `.env` file to en
 
 ## Deploying / Running Globally
 
-**Live Deployment:** `<PASTE YOUR RAILWAY URL HERE>`
+**Live Deployment:** `http://arena-iq-production-3c24.up.railway.app`
 
-The app is a standard Express server and can be deployed on any Node-compatible hosting platform (Railway, Render, Fly.io, Glitch, etc.). No database or persistent storage is required — all state lives in memory for the duration of the simulation.
+The app is a standard Express server and can be deployed on any Node-compatible hosting platform (Railway, Render, Fly.io, Glitch, etc.). No external database is required — telemetry, incidents, and volunteer state are snapshotted to a local `data/simulation-state.json` file every 10 seconds and restored on startup, so a server restart or redeploy resumes the simulation instead of resetting to defaults. This is intentionally lightweight (no DB dependency) since the file only needs to survive process restarts on the same host, not act as a durable system of record. If the filesystem is read-only or the write fails for any reason, the app logs a warning and falls back to pure in-memory behavior rather than crashing.
 
 **General deployment steps (applies to most platforms):**
 1. Push the repository to a public GitHub repo (exclude `node_modules` and `.env` via `.gitignore`).
@@ -85,5 +85,6 @@ The app is a standard Express server and can be deployed on any Node-compatible 
 6. Once deployed, the platform will provide a public URL (e.g. `https://arena-iq-production.up.railway.app`) serving the app directly — no additional routing or build step is required since the frontend is plain HTML/CSS/JS served statically from `public/`.
 
 **Notes for reviewers:**
+- The Staff Command / Operations Advisor portal is behind a demo login. Password: `fifa2026`. (Previously this was hinted directly on the login screen; it's been moved here so it isn't publicly visible on the live deployed page.)
 - Free-tier hosting (e.g. Render's free plan) may spin down after inactivity and take 30–60 seconds to respond on the first request after idling — this is expected platform behavior, not an application bug.
 - If the deployed link ever shows an unstyled page, it typically means static assets aren't being served from the correct folder on that platform — verify the **Start Command** is `npm start` and that the build didn't strip the `public/` directory.

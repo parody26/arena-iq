@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
+const fs = require('fs');
 
 // Load environment variables
 dotenv.config();
@@ -19,8 +20,8 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://kit.fontawesome.com", "'unsafe-inline'"],
-      styleSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://kit.fontawesome.com"],
+      styleSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "data:"],
       imgSrc: ["'self'", "data:"],
       connectSrc: ["'self'"]
@@ -150,6 +151,57 @@ let simulationState = {
   ],
   sseClients: []
 };
+
+// --- LIGHTWEIGHT STATE PERSISTENCE ---
+// Saves a JSON snapshot of simulationState (minus live SSE connections) to disk
+// on an interval, and restores it on startup. This means a server restart or
+// redeploy resumes from where the simulation left off instead of resetting to
+// the hardcoded defaults above. It is intentionally simple (no database) since
+// the app has no other persistence requirements — this only needs to survive
+// process restarts on the same host, not act as a system of record.
+const STATE_FILE = path.join(__dirname, 'data', 'simulation-state.json');
+const PERSIST_INTERVAL_MS = 10000; // save at most every 10s, not on every tick
+
+function loadPersistedState() {
+  try {
+    if (fs.existsSync(STATE_FILE)) {
+      const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+      // Only restore known, serializable fields — never trust/merge sseClients.
+      simulationState.matchState = saved.matchState ?? simulationState.matchState;
+      simulationState.simulationSpeed = saved.simulationSpeed ?? simulationState.simulationSpeed;
+      simulationState.telemetry = saved.telemetry ?? simulationState.telemetry;
+      simulationState.incidents = saved.incidents ?? simulationState.incidents;
+      simulationState.volunteers = saved.volunteers ?? simulationState.volunteers;
+      console.log(`Restored simulation state from ${STATE_FILE} (last saved ${saved.savedAt || 'unknown time'}).`);
+    } else {
+      console.log('No persisted state found — starting from default simulation state.');
+    }
+  } catch (err) {
+    // Never let a corrupt/missing state file block startup — just log and continue fresh.
+    console.warn(`Could not load persisted state (${err.message}). Starting fresh.`);
+  }
+}
+
+function persistState() {
+  try {
+    const { sseClients, ...persistable } = simulationState;
+    fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+    fs.writeFileSync(STATE_FILE, JSON.stringify({ ...persistable, savedAt: new Date().toISOString() }, null, 2));
+  } catch (err) {
+    // Persistence is best-effort (e.g. read-only filesystem on some hosts) —
+    // it should degrade to in-memory-only behavior, never crash the app.
+    console.warn(`Could not persist simulation state (${err.message}).`);
+  }
+}
+
+// Only load/save from disk when actually running the server, not when this
+// module is required by the Jest test suite.
+if (require.main === module) {
+  loadPersistedState();
+  setInterval(persistState, PERSIST_INTERVAL_MS);
+  process.on('SIGINT', () => { persistState(); process.exit(0); });
+  process.on('SIGTERM', () => { persistState(); process.exit(0); });
+}
 
 // SIMULATION TICK LOOP
 // Dynamically adjusts simulation telemetry metrics according to the match state
