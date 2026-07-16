@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ArenaIQ - FIFA World Cup 2026 Operations & Fan Hub</title>
+  <meta name="description" content="ArenaIQ is a real-time FIFA World Cup 2026 stadium operations and fan experience command hub. Live crowd telemetry, AI-powered incident response, accessible wayfinding, and eco-transit routing for MetLife Stadium.">
+  <!-- Open Graph -->
+  <meta property="og:title" content="ArenaIQ — FIFA World Cup 2026 Stadium Hub">
+  <meta property="og:description" content="Real-time stadium operations, AI incident response, and fan wayfinding for FIFA World Cup 2026 at MetLife Stadium.">
+  <meta property="og:type" content="website">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,6 +25,9 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+  <!-- SKIP NAVIGATION LINK (keyboard/screen reader accessibility) -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
 
   <!-- FULL SCREEN APP SHELL -->
   <div class="app-layout">
@@ -48,7 +56,7 @@
       <!-- Live Clock & Match State display -->
       <div class="sidebar-status-box">
         <div class="status-clock">
-          <span class="pulse-dot green"></span>
+          <span class="pulse-dot green" role="status" aria-label="Live connection active"></span>
           <span id="sim-time">08:00:00 AM</span>
         </div>
         <div class="status-match" id="sidebar-match-badge">Pre-match</div>
@@ -112,12 +120,13 @@
 
       <!-- Connection status -->
       <div class="sidebar-footer">
-        <i class="fa-solid fa-wifi text-accent-green"></i> Live Stream Connected
+        <i class="fa-solid fa-wifi text-accent-green" aria-hidden="true"></i>
+        <span aria-label="Live stream status: Connected" role="status">Live Stream Connected</span>
       </div>
     </aside>
 
     <!-- RIGHT CONTENT AREA -->
-    <main class="main-content">
+    <main class="main-content" id="main-content" tabindex="-1">
       
       <!-- ==============================================
            1. MAIN DASHBOARD TAB
@@ -141,7 +150,7 @@
         </div>
 
         <!-- TELEMETRY INFOCARDS GRID -->
-        <div class="telemetry-grid">
+        <div class="telemetry-grid" role="region" aria-live="polite" aria-label="Live stadium telemetry">
           
           <!-- Crowd Density -->
           <div class="tel-card glass-panel">
@@ -508,7 +517,7 @@
               <h3><i class="fa-solid fa-chart-column text-accent-green"></i> Stadium Waste Diversion Analytics</h3>
               <p class="section-desc">Live tracker of recycled and composted waste versus landfill rubbish.</p>
               <div class="eco-chart-wrapper">
-                <canvas id="chart-eco-diversion"></canvas>
+                <canvas id="chart-eco-diversion" role="img" aria-label="Doughnut chart showing stadium waste diversion: percentage recycled, composted, and sent to landfill"></canvas>
               </div>
             </div>
 
@@ -596,10 +605,10 @@
       <section id="tab-staff-portal" class="tab-pane">
         
         <!-- LOCK SCREEN VIEW -->
-        <div id="staff-lock-screen" class="staff-lock-panel glass-panel">
+        <div id="staff-lock-screen" class="staff-lock-panel glass-panel" role="dialog" aria-modal="true" aria-labelledby="staff-lock-title" data-focus-trap="true">
           <div class="lock-brand">
-            <i class="fa-solid fa-lock text-accent-red"></i>
-            <h3>Operations Secure Login</h3>
+            <i class="fa-solid fa-lock text-accent-red" aria-hidden="true"></i>
+            <h3 id="staff-lock-title">Operations Secure Login</h3>
             <p>Access requires authorized stadium staff credentials.</p>
           </div>
           <form id="staff-login-form" class="lock-form">
@@ -632,11 +641,11 @@
               <div class="charts-container">
                 <div class="chart-wrapper">
                   <h5>Gate wait times (minutes)</h5>
-                  <canvas id="chart-gate-waits"></canvas>
+                  <canvas id="chart-gate-waits" role="img" aria-label="Bar chart showing current wait times in minutes for Gate A, B, C, D, Concessions, and Restrooms"></canvas>
                 </div>
                 <div class="chart-wrapper">
                   <h5>Smart Bins Fill Level (%)</h5>
-                  <canvas id="chart-waste-levels"></canvas>
+                  <canvas id="chart-waste-levels" role="img" aria-label="Bar chart showing smart waste bin fill level percentage for zones 1 through 4"></canvas>
                 </div>
               </div>
             </div>

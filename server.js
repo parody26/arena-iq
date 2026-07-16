@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // Load environment variables
 dotenv.config();
@@ -58,6 +59,54 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests, please slow down.' }
 });
 app.use('/api/', apiLimiter);
+
+// --- SERVER-SIDE STAFF AUTHENTICATION ---
+// Tokens are kept in memory (cleared on restart) — intentionally lightweight
+// for a hackathon demo. Replace with a real session store (e.g. express-session
+// + Redis) for production use.
+const STAFF_PASSWORD = process.env.STAFF_PASSWORD || 'fifa2026';
+const TOKEN_TTL_MS = 4 * 60 * 60 * 1000; // 4-hour session
+const activeTokens = new Map(); // token → expiry timestamp
+
+function generateToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function isValidToken(token) {
+  if (!token || !activeTokens.has(token)) return false;
+  if (Date.now() > activeTokens.get(token)) {
+    activeTokens.delete(token);
+    return false;
+  }
+  return true;
+}
+
+// Middleware that guards privileged mutation endpoints.
+function authMiddleware(req, res, next) {
+  const token = req.headers['x-staff-token'];
+  if (!isValidToken(token)) {
+    return res.status(401).json({ error: 'Unauthorized. Valid staff token required.' });
+  }
+  next();
+}
+
+// Staff login — compares against env var, never exposed to the client.
+app.post('/api/auth/staff', (req, res) => {
+  const { password } = req.body;
+  if (typeof password !== 'string' || password !== STAFF_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid credentials.' });
+  }
+  const token = generateToken();
+  activeTokens.set(token, Date.now() + TOKEN_TTL_MS);
+  return res.json({ token });
+});
+
+// Staff logout — immediately invalidates the token server-side.
+app.post('/api/auth/staff/logout', (req, res) => {
+  const token = req.headers['x-staff-token'];
+  if (token) activeTokens.delete(token);
+  return res.json({ success: true });
+});
 
 // Tighter limit specifically on the AI chat endpoint (costlier, most abuse-prone)
 const chatLimiter = rateLimit({
@@ -286,11 +335,10 @@ function runSimulationTick() {
       tel.queueWaitTimes["Gate B"] = 1;
       tel.queueWaitTimes["Gate C"] = 1;
       tel.queueWaitTimes["Gate D"] = 1;
-      // Concessions closed or low
+      // Concessions closed/low; restrooms still in use by departing fans
       tel.queueWaitTimes["Concessions"] = 1;
-      // High transit queues (Metro & Bus)
-      tel.queueWaitTimes["Concessions"] = 1; // wait, let's keep it separate or transit is handled in UI
-      // Waste capacity spikes
+      tel.queueWaitTimes["Restrooms"] = Math.max(2, tel.queueWaitTimes["Restrooms"] - 1);
+      // Waste capacity spikes as fans exit
       tel.wasteBinCapacity.zone1 = Math.min(100, tel.wasteBinCapacity.zone1 + Math.floor(Math.random() * 4));
       tel.wasteBinCapacity.zone2 = Math.min(100, tel.wasteBinCapacity.zone2 + Math.floor(Math.random() * 3));
       tel.wasteBinCapacity.zone3 = Math.min(100, tel.wasteBinCapacity.zone3 + Math.floor(Math.random() * 4));
@@ -309,14 +357,22 @@ function runSimulationTick() {
   broadcastData();
 }
 
+// Wrap the tick so it is a no-op when no browsers are connected — avoids
+// running all the Math.random() telemetry math on every interval when nobody
+// is watching, cutting idle CPU use to near zero.
+function runSimulationTickGated() {
+  if (simulationState.sseClients.length === 0) return;
+  runSimulationTick();
+}
+
 // Tick timer
-let simulationInterval = setInterval(runSimulationTick, 3000);
+let simulationInterval = setInterval(runSimulationTickGated, 3000);
 
 // Re-configure timer when speed changes
 function updateSimulationSpeed(speed) {
   simulationState.simulationSpeed = speed;
   clearInterval(simulationInterval);
-  simulationInterval = setInterval(runSimulationTick, Math.max(300, 3000 / speed));
+  simulationInterval = setInterval(runSimulationTickGated, Math.max(300, 3000 / speed));
 }
 
 // DYNAMIC INCIDENT GENERATOR
@@ -382,7 +438,16 @@ function generateRandomIncident() {
 }
 
 // GENAI RECOMMENDATION FOR INCIDENT (BACKGROUND ASYNC)
+// Raced against a 10-second timeout so a stalled Gemini call never leaks a
+// promise indefinitely — the rule-based recommendation already in place
+// continues to be shown if the AI doesn't respond in time.
 async function generateGenAIRecommendation(incident) {
+  const GENAI_TIMEOUT_MS = 10000;
+
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('GenAI recommendation timed out after 10s')), GENAI_TIMEOUT_MS)
+  );
+
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = `
@@ -399,9 +464,12 @@ async function generateGenAIRecommendation(incident) {
       Be direct, professional, and specific to the FIFA stadium context.
     `;
 
-    const result = await model.generateContent(prompt);
+    const result = await Promise.race([
+      model.generateContent(prompt),
+      timeoutPromise
+    ]);
     const text = result.response.text().trim();
-    
+
     // Find incident and update recommendation
     const idx = simulationState.incidents.findIndex(i => i.id === incident.id);
     if (idx !== -1) {
@@ -409,7 +477,9 @@ async function generateGenAIRecommendation(incident) {
       broadcastData();
     }
   } catch (error) {
-    console.error('Error generating GenAI recommendation:', error.message);
+    // Log timeout or API error but never crash — the rule-based recommendation
+    // already stored on the incident continues to be shown.
+    console.error('GenAI recommendation error:', error.message);
   }
 }
 
@@ -475,7 +545,7 @@ app.get('/api/live-data', (req, res) => {
 // SIMULATION CONTROL API
 const VALID_MATCH_STATES = ["Pre-match", "Kick-off", "Half-time", "Second-half", "Post-match"];
 
-app.post('/api/simulation/state', (req, res) => {
+app.post('/api/simulation/state', authMiddleware, (req, res) => {
   const { matchState, simulationSpeed } = req.body;
 
   if (matchState !== undefined && !VALID_MATCH_STATES.includes(matchState)) {
@@ -513,7 +583,7 @@ app.post('/api/simulation/state', (req, res) => {
 });
 
 // INCIDENT RESOLUTION API
-app.post('/api/incidents/resolve', (req, res) => {
+app.post('/api/incidents/resolve', authMiddleware, (req, res) => {
   const { incidentId } = req.body;
 
   if (typeof incidentId !== 'string' || !incidentId.trim() || incidentId.length > 50) {
@@ -743,4 +813,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, simulationState };
+module.exports = { app, simulationState, isValidToken, activeTokens, generateToken, runSimulationTick, handleLocalNLP };

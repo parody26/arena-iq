@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     routeType: 'std', // std or acc
     stadium: 'metlife',
     staffLoggedIn: false,
+    staffToken: null,  // in-memory only, never persisted to localStorage
     bottlesSavedCounter: 42930,
     chartsInitialized: false,
     loadedEventState: '',
@@ -431,34 +432,94 @@ document.addEventListener('DOMContentLoaded', () => {
   // 5. STAFF PASSWORD VERIFICATION & LOGOUT
   // ==========================================
   
-  staffLoginForm.addEventListener('submit', (e) => {
+  staffLoginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const enteredPassword = staffPasswordInput.value;
-    
-    if (enteredPassword === 'fifa2026') {
-      appState.staffLoggedIn = true;
-      loginErrorMsg.classList.add('hidden');
-      staffPasswordInput.value = '';
-      
-      staffLockScreen.classList.add('hidden');
-      staffUnlockedDashboard.classList.remove('hidden');
-      
-      setTimeout(initializeCharts, 100);
-    } else {
+    staffPasswordInput.value = '';
+
+    try {
+      const res = await fetch('/api/auth/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: enteredPassword })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        appState.staffLoggedIn = true;
+        appState.staffToken = data.token;
+        loginErrorMsg.classList.add('hidden');
+
+        staffLockScreen.classList.add('hidden');
+        staffUnlockedDashboard.classList.remove('hidden');
+
+        setTimeout(initializeCharts, 100);
+      } else {
+        loginErrorMsg.classList.remove('hidden');
+        staffPasswordInput.classList.add('error-shake');
+        setTimeout(() => staffPasswordInput.classList.remove('error-shake'), 400);
+        staffPasswordInput.focus();
+      }
+    } catch (err) {
+      console.error('Login request failed:', err);
       loginErrorMsg.classList.remove('hidden');
-      staffPasswordInput.classList.add('error-shake');
-      setTimeout(() => staffPasswordInput.classList.remove('error-shake'), 400);
-      staffPasswordInput.value = '';
       staffPasswordInput.focus();
     }
   });
 
-  btnStaffLogout.addEventListener('click', () => {
+  btnStaffLogout.addEventListener('click', async () => {
+    // Invalidate the token on the server first
+    if (appState.staffToken) {
+      try {
+        await fetch('/api/auth/staff/logout', {
+          method: 'POST',
+          headers: { 'X-Staff-Token': appState.staffToken }
+        });
+      } catch (err) {
+        console.warn('Logout request failed (token will expire naturally):', err);
+      }
+    }
     appState.staffLoggedIn = false;
+    appState.staffToken = null;
     staffUnlockedDashboard.classList.add('hidden');
     staffLockScreen.classList.remove('hidden');
     loginErrorMsg.classList.add('hidden');
     staffPasswordInput.focus();
+  });
+
+  // ==========================================
+  // 5b. KEYBOARD FOCUS TRAP FOR STAFF LOGIN DIALOG
+  // ==========================================
+  // When the staff lock screen is visible, Tab and Shift+Tab must cycle only
+  // within it so keyboard-only users cannot reach the hidden dashboard content
+  // behind the overlay.
+  staffLockScreen.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    // Collect all focusable elements inside the dialog
+    const focusable = Array.from(
+      staffLockScreen.querySelectorAll(
+        'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter(el => !el.disabled && el.offsetParent !== null);
+
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      // Shift+Tab: if we are on the first element, wrap to last
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      // Tab: if we are on the last element, wrap to first
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
   });
 
   // ==========================================
@@ -702,7 +763,10 @@ document.addEventListener('DOMContentLoaded', () => {
     incidents.forEach(inc => {
       const statusClass = `badge-${inc.status.toLowerCase()}`;
       const showAction = inc.status === "Pending";
-      
+      // Provide a text label for severity alongside the colour-coded badge
+      // so screen reader users get the severity level, not just a colour.
+      const severityLabel = `Severity: ${inc.severity}`;
+
       html += `
         <div class="incident-item severity-${escapeHTML(inc.severity)}">
           <div class="incident-meta">
@@ -710,7 +774,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="incident-time">${escapeHTML(inc.timestamp)}</span>
           </div>
           <div class="incident-desc">${escapeHTML(inc.description)}</div>
-          
+          <span class="incident-severity-badge" aria-label="${escapeHTML(severityLabel)}"><span class="sr-only">${escapeHTML(severityLabel)} — </span>${escapeHTML(inc.severity)}</span>
+
           <div class="incident-ai-rec-box">
             <p><strong><i class="fa-solid fa-robot" aria-hidden="true"></i> ARENAIQ DECISION SUPPORT PLAN</strong>
             ${escapeHTML(inc.genaiRecommendation)}</p>
@@ -718,7 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <div class="incident-actions">
             <span class="incident-badge ${statusClass}">${escapeHTML(inc.status)}</span>
-            ${showAction 
+            ${showAction
               ? `<button class="resolve-btn" onclick="authorizeIncidentResponse('${escapeHTML(inc.id)}')" aria-label="Authorize AI response for incident at ${escapeHTML(inc.location)}"><i class="fa-solid fa-bolt" aria-hidden="true"></i> Authorize AI Response</button>`
               : `<span class="assigned-staff-info"><i class="fa-solid fa-user-check text-accent-green" aria-hidden="true"></i> Assigned: ${escapeHTML(inc.volunteerAssigned)}</span>`
             }
@@ -733,7 +798,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.authorizeIncidentResponse = function(incidentId) {
     fetch('/api/incidents/resolve', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Staff-Token': appState.staffToken || ''
+      },
       body: JSON.stringify({ incidentId })
     })
     .then(res => res.json())
@@ -751,13 +819,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let html = '';
     volunteers.forEach(v => {
       const statusClass = `status-${v.status}`;
+      // Screen reader label: the colour dot alone is not sufficient for assistive tech.
+      const srStatus = v.status === 'Available' ? 'Available' : v.status === 'Dispatched' ? 'Currently dispatched' : v.status;
       html += `
         <div class="volunteer-node">
           <div class="vol-name-group">
-            <span class="vol-name">${v.name}</span>
-            <span class="vol-loc"><i class="fa-solid fa-map-pin"></i> ${v.location}</span>
+            <span class="vol-name">${escapeHTML(v.name)}</span>
+            <span class="vol-loc"><i class="fa-solid fa-map-pin" aria-hidden="true"></i> ${escapeHTML(v.location)}</span>
           </div>
-          <span class="vol-status ${statusClass}">${v.status}</span>
+          <span class="vol-status ${statusClass}" aria-label="Status: ${escapeHTML(srStatus)}">${escapeHTML(v.status)}<span class="sr-only"> — ${escapeHTML(srStatus)}</span></span>
         </div>
       `;
     });
@@ -772,7 +842,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const matchState = e.target.value;
     fetch('/api/simulation/state', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Staff-Token': appState.staffToken || ''
+      },
       body: JSON.stringify({ matchState })
     })
     .then(res => res.json())
@@ -784,7 +857,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const speed = Number(btn.dataset.speed);
       fetch('/api/simulation/state', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-Token': appState.staffToken || ''
+        },
         body: JSON.stringify({ simulationSpeed: speed })
       })
       .then(res => res.json())

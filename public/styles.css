@@ -62,6 +62,40 @@
   border: 0;
 }
 
+/* Skip navigation link — visible only on keyboard focus, allowing keyboard
+   users to jump straight past the sidebar into the main content area. */
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: 9999;
+  padding: 10px 20px;
+  background: var(--color-green, #00e676);
+  color: #000;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 0 0 8px 8px;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+.skip-link:focus {
+  top: 0;
+}
+
+/* Incident severity text badge (supplements the colour-coded left border) */
+.incident-severity-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  background: rgba(255,255,255,0.07);
+  color: var(--color-text-secondary);
+}
+
 /* Visible focus outline for keyboard navigation on interactive elements */
 button:focus-visible,
 input:focus-visible,
