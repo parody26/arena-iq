@@ -31,9 +31,22 @@ function isValidToken(token) {
   return true;
 }
 
+function getCookie(req, name) {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return null;
+  const cookies = cookieHeader.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    const parts = cookies[i].split('=');
+    if (parts[0].trim() === name) {
+      return decodeURIComponent(parts[1].trim());
+    }
+  }
+  return null;
+}
+
 /** Express middleware — guards privileged mutation endpoints. */
 function authMiddleware(req, res, next) {
-  const token = req.headers['x-staff-token'];
+  const token = req.headers['x-staff-token'] || getCookie(req, 'staff_token');
   if (!isValidToken(token)) {
     return res.status(401).json({ error: 'Unauthorized. Valid staff token required.' });
   }
@@ -48,13 +61,23 @@ router.post('/staff', (req, res) => {
   }
   const token = generateToken();
   activeTokens.set(token, Date.now() + TOKEN_TTL_MS);
+
+  // Set secure HTTP-only cookie
+  res.cookie('staff_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: TOKEN_TTL_MS
+  });
+
   return res.json({ token });
 });
 
 // Staff logout
 router.post('/staff/logout', (req, res) => {
-  const token = req.headers['x-staff-token'];
+  const token = req.headers['x-staff-token'] || getCookie(req, 'staff_token');
   if (token) activeTokens.delete(token);
+  res.clearCookie('staff_token');
   return res.json({ success: true });
 });
 
