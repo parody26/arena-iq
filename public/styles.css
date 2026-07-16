@@ -1809,3 +1809,17 @@ body {
 #db-concession-bar { width: 40%; }
 #db-solar-bar { width: 27%; }
 #db-waste-bar { width: 27%; }
+
+/* Screen-reader-only data tables for Chart.js canvases.
+   Visually hidden but fully accessible to assistive technology. */
+.chart-data-table {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

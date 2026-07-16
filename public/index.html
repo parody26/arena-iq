@@ -641,11 +641,35 @@
               <div class="charts-container">
                 <div class="chart-wrapper">
                   <h5>Gate wait times (minutes)</h5>
-                  <canvas id="chart-gate-waits" role="img" aria-label="Bar chart showing current wait times in minutes for Gate A, B, C, D, Concessions, and Restrooms"></canvas>
+                  <canvas id="chart-gate-waits" role="img" aria-label="Bar chart showing current wait times in minutes for Gate A, B, C, D, Concessions, and Restrooms" aria-describedby="chart-gate-waits-table"></canvas>
+                  <!-- Visually hidden data table for screen readers -->
+                  <table id="chart-gate-waits-table" class="chart-data-table">
+                    <caption>Gate and facility queue wait times in minutes</caption>
+                    <thead><tr><th scope="col">Location</th><th scope="col">Wait Time (min)</th></tr></thead>
+                    <tbody id="chart-gate-waits-tbody">
+                      <tr><td>Gate A</td><td>—</td></tr>
+                      <tr><td>Gate B</td><td>—</td></tr>
+                      <tr><td>Gate C</td><td>—</td></tr>
+                      <tr><td>Gate D</td><td>—</td></tr>
+                      <tr><td>Concessions</td><td>—</td></tr>
+                      <tr><td>Restrooms</td><td>—</td></tr>
+                    </tbody>
+                  </table>
                 </div>
                 <div class="chart-wrapper">
                   <h5>Smart Bins Fill Level (%)</h5>
-                  <canvas id="chart-waste-levels" role="img" aria-label="Bar chart showing smart waste bin fill level percentage for zones 1 through 4"></canvas>
+                  <canvas id="chart-waste-levels" role="img" aria-label="Bar chart showing smart waste bin fill level percentage for zones 1 through 4" aria-describedby="chart-waste-levels-table"></canvas>
+                  <!-- Visually hidden data table for screen readers -->
+                  <table id="chart-waste-levels-table" class="chart-data-table">
+                    <caption>Smart waste bin fill levels by zone</caption>
+                    <thead><tr><th scope="col">Zone</th><th scope="col">Fill Level (%)</th></tr></thead>
+                    <tbody id="chart-waste-levels-tbody">
+                      <tr><td>Zone 1</td><td>—</td></tr>
+                      <tr><td>Zone 2</td><td>—</td></tr>
+                      <tr><td>Zone 3</td><td>—</td></tr>
+                      <tr><td>Zone 4</td><td>—</td></tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
